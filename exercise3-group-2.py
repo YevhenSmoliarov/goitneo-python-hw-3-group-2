@@ -1,22 +1,48 @@
-class Birthday:
-    def __init__(self, value):
+import re
+
+
+class Field:
+    def __init__(self, value: str) -> None:
         self.value = value
 
-    def validate(self):
-        try:
-            datetime.strptime(self.value, '%d.%m.%Y')
-            return True
-        except ValueError:
-            return False
+    def __str__(self) -> str:
+        return str(self.value)
+    
 
-    def __str__(self):
-        return self.value
+class Birthday(Field):
+    def __init__(self, value: str) -> None:
+        if self._is_valid_date(value):
+            super().__init__(value)
+        else:
+            raise ValueError("Date must be in format dd.mm.yyyy")
+
+    def _is_valid_date(self, value) -> bool:
+        pattern = r'^\d{2}\.\d{2}\.\d{4}$'
+        if re.match(pattern, value):
+            return True
+        return False
+    
+    
+class Name(Field):
+    def __init__(self, value: str) -> None:
+        super().__init__(value)
+
+
+class Phone(Field):
+    def __init__(self, value: str) -> None:
+        for char in value:
+            if char.isalpha():
+                raise ValueError("Phone number must contain only digits.")
+        if len(value) < 10:
+            raise ValueError("Phone number must be at least 10 digits.")
+        super().__init__(value)
+
 
 class Record:
     def __init__(self, name):
-        self.name = Name(name)
-        self.phones = []
-        self.birthday = None
+        self.name: Name = Name(name)
+        self.phones: list[Phone] = []
+        self.birthday: Birthday = None
 
     def add_phone(self, phone):
         self.phones.append(Phone(phone))
@@ -36,9 +62,7 @@ class Record:
         return None
 
     def add_birthday(self, birthday):
-        if not birthday.validate():
-            return "Invalid birthday format. Please use DD.MM.YYYY."
-        self.birthday = birthday
+        self.birthday = Birthday(birthday)
 
     def __str__(self):
         phones = '; '.join(str(p) for p in self.phones)
@@ -99,7 +123,9 @@ def handle_change(args, book):
     name, new_phone = args
     record = book.find(name)
     if record:
-        record.remove_phone(new_phone)
+        old_phone = record.find_phone(new_phone)
+        if old_phone:
+            record.remove_phone(old_phone)
         record.add_phone(new_phone)
         return "Phone number updated."
     else:
@@ -132,7 +158,7 @@ def handle_add_birthday(args, book):
     name, birthday = args
     record = book.find(name)
     if record:
-        record.add_birthday(Birthday(birthday))
+        record.add_birthday(birthday)
         return f"Birthday added for {name}."
     else:
         return f"Contact '{name}' not found."
@@ -153,6 +179,11 @@ def handle_birthdays(book):
     book.get_birthdays_per_week()
     return ""
 
+def parse_input(user_input):
+    cmd, *args = user_input.split()
+    cmd = cmd.strip().lower()
+    return cmd, args
+
 if __name__ == "__main__":
     book = AddressBook()
     print("Welcome to the Address Book Bot!")
@@ -166,18 +197,20 @@ if __name__ == "__main__":
         elif command == "hello":
             print(handle_hello())
         elif command == "add":
-            print(handle_add(args, book))
+            print(handle_add(*args, book))
         elif command == "change":
-            print(handle_change(args, book))
+            print(handle_change(*args, book))
         elif command == "phone":
-            print(handle_phone(args, book))
+            print(handle_phone(*args, book))
         elif command == "all":
             print(handle_all(book))
         elif command == "add-birthday":
-            print(handle_add_birthday(args, book))
+            print(handle_add_birthday(*args, book))
         elif command == "show-birthday":
-            print(handle_show_birthday(args, book))
+            print(handle_show_birthday(*args, book))
         elif command == "birthdays":
             print(handle_birthdays(book))
         else:
             print("Invalid command.")
+
+# the end
